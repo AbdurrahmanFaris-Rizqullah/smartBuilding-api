@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import time
 from psycopg2.extras import RealDictCursor
 from app.database import get_db_connection, initialize_db
-from app.models_schemas import MonitoringData
+from app.ml.models_schemas import MonitoringData
 from app.utils import update_with_ml_model
 
 app = FastAPI()
