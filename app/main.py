@@ -1,9 +1,11 @@
-from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine, initialize_db
-from app.models_schemas import Monitoring, MonitoringData
-from app.utils import update_with_ml_model
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import time
+from psycopg2.extras import RealDictCursor
+from app.database import get_db_connection, initialize_db
+from app.models_schemas import MonitoringData
+from app.utils import update_with_ml_model
 
 app = FastAPI()
 
@@ -11,47 +13,39 @@ app = FastAPI()
 @app.on_event("startup")
 def on_startup():
     initialize_db()
-    BackgroundTasks().add_task(update_data_every_5_seconds)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def update_data_every_5_seconds():
     while True:
-        db = next(get_db())
-        data = db.query(Monitoring).order_by(Monitoring.timestamp.desc()).first()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM monitoring ORDER BY timestamp DESC LIMIT 1")
+        data = cursor.fetchone()
         if data:
-            data_dict = {
-                'timestamp': data.timestamp,
-                'people': data.people,
-                'temperature': data.temperature,
-                'humidity': data.humidity,
-                'light_intensity': data.light_intensity,
-                'noise': data.noise,
-                'co2': data.co2,
-                'pm25': data.pm25,
-                'airflow': data.airflow,
-                'energy': data.energy,
-                'cost': data.cost,
-                'comfort': data.comfort
-            }
-            updated_data = update_with_ml_model(data_dict)
-            data.energy = updated_data['energy']
-            data.comfort = updated_data['comfort']
-            db.commit()
+            updated_data = update_with_ml_model(data)
+            cursor.execute('''
+                UPDATE monitoring SET energy = %s, comfort = %s
+                WHERE id = %s
+            ''', (updated_data['energy'], updated_data['comfort'], data['id']))
+            conn.commit()
         time.sleep(5)
+        conn.close()
+
+@app.on_event("startup")
+def start_background_tasks():
+    BackgroundTasks().add_task(update_data_every_5_seconds)
 
 @app.post("/monitoring")
-async def update_monitoring(data: MonitoringData, db: Session = Depends(get_db)):
-    new_entry = Monitoring(**data.dict())
-    db.add(new_entry)
-    db.commit()
-    db.refresh(new_entry)
-    return {"status": "success", "data": new_entry}
+async def update_monitoring(data: MonitoringData):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+    INSERT INTO monitoring (timestamp, people, temperature, humidity, light_intensity, noise, co2, pm25, airflow, energy, cost, comfort)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ''', (data.timestamp, data.people, data.temperature, data.humidity, data.light_intensity,
+          data.noise, data.co2, data.pm25, data.airflow, data.energy, data.cost, data.comfort))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "data": data}
 
 @app.post("/custom-scenario")
 async def custom_scenario(data: MonitoringData):
@@ -65,15 +59,23 @@ async def mode_scenario(mode: str):
     return {"status": "success", "data": updated_data}
 
 @app.get("/levels")
-async def get_levels(db: Session = Depends(get_db)):
-    result = db.query(Monitoring.cost, Monitoring.energy).order_by(Monitoring.timestamp.desc()).first()
+async def get_levels():
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT cost, energy FROM monitoring ORDER BY timestamp DESC LIMIT 1")
+    result = cursor.fetchone()
+    conn.close()
     if not result:
         raise HTTPException(status_code=404, detail="No data found")
-    return {"cost": result.cost, "energy": result.energy}
+    return {"cost": result['cost'], "energy": result['energy']}
 
 @app.get("/comfort")
-async def get_comfort(db: Session = Depends(get_db)):
-    result = db.query(Monitoring.comfort).order_by(Monitoring.timestamp.desc()).first()
+async def get_comfort():
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT comfort FROM monitoring ORDER BY timestamp DESC LIMIT 1")
+    result = cursor.fetchone()
+    conn.close()
     if not result:
         raise HTTPException(status_code=404, detail="No data found")
-    return {"comfort": result.comfort}
+    return {"comfort": result['comfort']}
