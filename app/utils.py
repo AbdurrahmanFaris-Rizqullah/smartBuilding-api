@@ -1,7 +1,7 @@
 import joblib
 import pandas as pd
 
-# Memuat model machine learning dan scaler
+# Memuat model machine learning
 models = joblib.load('app/ml/models.pkl')
 energy_model = models['energy_model']
 comfort_model = models['comfort_model']

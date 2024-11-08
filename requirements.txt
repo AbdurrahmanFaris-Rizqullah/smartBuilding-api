@@ -6,3 +6,4 @@ imbalanced-learn
 xgboost
 sqlite3
 joblib
+sqlalchemy

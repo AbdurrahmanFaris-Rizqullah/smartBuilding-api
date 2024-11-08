@@ -1,11 +1,8 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, TIMESTAMP
+from pydantic import BaseModel
+from typing import Optional
+from sqlalchemy import Column, Integer, String, Float, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgresql://postgres:Faris123@localhost/db-smartBulding"
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class Monitoring(Base):
@@ -24,5 +21,19 @@ class Monitoring(Base):
     cost = Column(Float)
     comfort = Column(Float)
 
-def initialize_db():
-    Base.metadata.create_all(bind=engine)
+class MonitoringData(BaseModel):
+    timestamp: str
+    people: int
+    temperature: float
+    humidity: float
+    light_intensity: float
+    noise: float
+    co2: float
+    pm25: float
+    airflow: float
+    energy: Optional[float] = None
+    cost: Optional[float] = None
+    comfort: Optional[float] = None
+
+    class Config:
+        orm_mode = True
