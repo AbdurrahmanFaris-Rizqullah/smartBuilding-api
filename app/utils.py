@@ -1,22 +1,26 @@
 import joblib
-import pandas as pd
+from typing import Dict
 
-# Memuat model machine learning dan scaler dari satu file
-models = joblib.load('app/ml/models.pkl')
-scaler = models['scaler']
-energy_model = models['energy_model']
-comfort_model = models['comfort_model']
+# Load the models from the .pkl file
+models: Dict[str, object] = joblib.load('app/ml/models.pkl')
 
-def update_with_ml_model(data):
-    X = pd.DataFrame([data.dict()])
-    X_scaled = scaler.transform(X)
+# Check if 'model' exists in the loaded models
+if 'model' not in models:
+    raise KeyError("'model' not found in models.pkl")
 
-    # Prediksi menggunakan model machine learning
-    energy_pred = energy_model.predict(X_scaled)
-    comfort_pred = comfort_model.predict(X_scaled)
+model = models['model']  # Assuming you have a model key
 
-    # Perbarui data dengan prediksi baru
-    data.energy = energy_pred[0]
-    data.comfort = comfort_pred[0]
+def update_with_ml_model(data: dict) -> dict:
+    # Extract features from data
+    features = [data['temperature'], data['humidity'], data['light_intensity'],
+                data['noise'], data['co2'], data['pm25'], data['airflow']]
 
+    # Reshape features to match the model input
+    reshaped_features = [features]
+
+    # Predict the energy and comfort
+    predictions = model.predict(reshaped_features)
+    data['energy'] = predictions[0][0]
+    data['comfort'] = predictions[0][1]
+    
     return data

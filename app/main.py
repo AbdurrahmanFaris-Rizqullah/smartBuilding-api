@@ -9,7 +9,6 @@ from app.utils import update_with_ml_model
 
 app = FastAPI()
 
-# Inisialisasi database saat aplikasi mulai
 @app.on_event("startup")
 def on_startup():
     initialize_db()
