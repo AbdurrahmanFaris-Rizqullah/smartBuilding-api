@@ -3,8 +3,12 @@ from sqlalchemy.dialects.postgresql import UUID  # Import tipe UUID dari Postgre
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import uuid  # Import modul uuid untuk pembuatan UUID otomatis
+from dotenv import load_dotenv
+import os
 
-DATABASE_URL = "postgresql://postgres:Faris123@localhost/db-smartBuilding"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -23,7 +27,7 @@ class Monitoring(Base):
     airflow = Column(Float, nullable=False)
     energy = Column(Float)
     comfort = Column(Float)
-    datetime = Column(TIMESTAMP, nullable=False)  # Gunakan TIMESTAMP untuk datetime
+    datetime = Column(TIMESTAMP, nullable=False) 
 
 def initialize_db():
     Base.metadata.create_all(bind=engine)
