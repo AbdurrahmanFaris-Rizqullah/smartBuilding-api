@@ -35,18 +35,20 @@ async def update_data_every_5_seconds():
 async def start_background_tasks():
     asyncio.create_task(update_data_every_5_seconds())
 
-@app.post("/monitoring")
-async def update_monitoring(data: MonitoringData):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-    INSERT INTO dataset_energy_comfort_refined2 (datetime, people, temperature, humidity, lightIntensity, noise, co2, pm25, airflow, energy, comfort)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    ''', (data.datetime, data.people, data.temperature, data.humidity, data.lightIntensity,
-          data.noise, data.co2, data.pm25, data.airflow, data.energy, data.comfort))
-    conn.commit()
-    conn.close()
-    return {"status": "success", "data": data}
+
+# ---Nonaktifkan karena berjalan secara manual---
+# @app.post("/monitoring")
+# async def update_monitoring(data: MonitoringData):
+#     conn = get_db_connection()
+#     cursor = conn.cursor()
+#     cursor.execute('''
+#     INSERT INTO dataset_energy_comfort_refined2 (datetime, people, temperature, humidity, lightIntensity, noise, co2, pm25, airflow, energy, comfort)
+#     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+#     ''', (data.datetime, data.people, data.temperature, data.humidity, data.lightIntensity,
+#           data.noise, data.co2, data.pm25, data.airflow, data.energy, data.comfort))
+#     conn.commit()
+#     conn.close()
+#     return {"status": "success", "data": data}
 
 @app.post("/custom-scenario")
 async def custom_scenario(data: MonitoringData):
